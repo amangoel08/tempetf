@@ -4,9 +4,9 @@ import streamlit as st
 import time
 
 # MUST BE FIRST
-st.set_page_config(page_title="Private ETF Dashboard", layout="wide")
+st.set_page_config(page_title="ETF Signals", layout="wide")
 
-# 🔐 LOGIN SYSTEM
+# 🔐 LOGIN
 PASSWORD = "mysecret123"
 
 if "authenticated" not in st.session_state:
@@ -29,7 +29,7 @@ if not st.session_state.authenticated:
 
 # ---------------- DASHBOARD ----------------
 
-st.title("📊 ETF Dashboard (Dip Buy Strategy)")
+st.title("📊 ETF Signals (Yesterday vs Today)")
 
 etfs = {
     "HDFCSML250": "HDFCSML250.NS",
@@ -40,60 +40,47 @@ etfs = {
     "NASDAQ100": "MON100.NS"
 }
 
-# 🔘 Controls
-col1, col2 = st.columns(2)
+# 🔘 Auto-refresh toggle
+auto_refresh = st.toggle("Auto Refresh (10s)")
 
-with col1:
-    period = st.selectbox("Time Range", ["5d", "1mo", "3mo", "6mo", "1y"], index=1)
+data = []
 
-with col2:
-    auto_refresh = st.toggle("Auto Refresh (10s)")
-
-# 📊 Loop ETFs
 for name, symbol in etfs.items():
-    st.subheader(name)
+    hist = yf.Ticker(symbol).history(period="2d")
 
-    hist = yf.Ticker(symbol).history(period=period)
-
-    if hist.empty or len(hist) < 2:
-        st.warning("Not enough data")
+    if len(hist) < 2:
         continue
 
-    df = hist.copy()
+    yesterday = hist["Close"].iloc[-2]
+    today = hist["Close"].iloc[-1]
 
-    # 📈 Chart
-    st.line_chart(df["Close"])
+    change_pct = ((today - yesterday) / yesterday) * 100
 
-    # 🔍 Price logic
-    latest = df.iloc[-1]
-    prev = df.iloc[-2]
-
-    price = latest["Close"]
-    prev_price = prev["Close"]
-
-    change_pct = ((price - prev_price) / prev_price) * 100
-
-    # 🎯 Signal Logic
-    signal = "HOLD"
-
+    # 🎯 Signal
     if change_pct <= -1:
         signal = "BUY"
-        st.success(f"🟢 BUY Signal for {name} (Drop: {round(change_pct, 2)}%)")
-
     elif change_pct >= 1:
         signal = "SELL"
-        st.error(f"🔴 SELL Signal for {name} (Rise: {round(change_pct, 2)}%)")
-
     else:
-        st.info(f"⚪ HOLD for {name} ({round(change_pct, 2)}%)")
+        signal = "HOLD"
 
-    # 📌 Metrics
-    st.metric("Price", round(price, 2), f"{round(change_pct, 2)}%")
-    st.write(f"Signal: {signal}")
+    data.append([
+        name,
+        round(yesterday, 2),
+        round(today, 2),
+        round(change_pct, 2),
+        signal
+    ])
 
-    st.divider()
+# 📊 Table
+df = pd.DataFrame(
+    data,
+    columns=["ETF", "Yesterday", "Today", "% Change", "Signal"]
+)
 
-# 🔄 Optional Auto Refresh
+st.dataframe(df, use_container_width=True)
+
+# 🔄 Optional refresh
 if auto_refresh:
     time.sleep(10)
     st.rerun()
