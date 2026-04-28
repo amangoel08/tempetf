@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 import streamlit as st
+import time
 
 # MUST BE FIRST
 st.set_page_config(page_title="Private ETF Dashboard", layout="wide")
@@ -18,19 +19,17 @@ def login():
     if st.button("Login"):
         if pwd == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access granted. Reloading...")
             st.rerun()
         else:
             st.error("Wrong password")
 
-# If not logged in → stop here
 if not st.session_state.authenticated:
     login()
     st.stop()
 
 # ---------------- DASHBOARD ----------------
 
-st.title("📊 Live ETF Trading Dashboard")
+st.title("📊 ETF Dashboard (Dip Buy Strategy)")
 
 etfs = {
     "HDFCSML250": "HDFCSML250.NS",
@@ -41,24 +40,60 @@ etfs = {
     "NASDAQ100": "MON100.NS"
 }
 
-data = []
+# 🔘 Controls
+col1, col2 = st.columns(2)
 
+with col1:
+    period = st.selectbox("Time Range", ["5d", "1mo", "3mo", "6mo", "1y"], index=1)
+
+with col2:
+    auto_refresh = st.toggle("Auto Refresh (10s)")
+
+# 📊 Loop ETFs
 for name, symbol in etfs.items():
-    hist = yf.Ticker(symbol).history(period="2d")
+    st.subheader(name)
 
-    if len(hist) < 2:
+    hist = yf.Ticker(symbol).history(period=period)
+
+    if hist.empty or len(hist) < 2:
+        st.warning("Not enough data")
         continue
 
-    prev = hist["Close"].iloc[-2]
-    curr = hist["Close"].iloc[-1]
-    change = ((curr - prev) / prev) * 100
+    df = hist.copy()
 
-    data.append([name, round(curr, 2), round(change, 2)])
+    # 📈 Chart
+    st.line_chart(df["Close"])
 
-df = pd.DataFrame(data, columns=["ETF", "Price", "% Change"])
+    # 🔍 Price logic
+    latest = df.iloc[-1]
+    prev = df.iloc[-2]
 
-st.dataframe(df, use_container_width=True)
+    price = latest["Close"]
+    prev_price = prev["Close"]
 
-# 🔄 Proper Streamlit auto refresh
-st.write("Auto-refresh every 10 seconds")
-st.rerun()
+    change_pct = ((price - prev_price) / prev_price) * 100
+
+    # 🎯 Signal Logic
+    signal = "HOLD"
+
+    if change_pct <= -1:
+        signal = "BUY"
+        st.success(f"🟢 BUY Signal for {name} (Drop: {round(change_pct, 2)}%)")
+
+    elif change_pct >= 1:
+        signal = "SELL"
+        st.error(f"🔴 SELL Signal for {name} (Rise: {round(change_pct, 2)}%)")
+
+    else:
+        st.info(f"⚪ HOLD for {name} ({round(change_pct, 2)}%)")
+
+    # 📌 Metrics
+    st.metric("Price", round(price, 2), f"{round(change_pct, 2)}%")
+    st.write(f"Signal: {signal}")
+
+    st.divider()
+
+# 🔄 Optional Auto Refresh
+if auto_refresh:
+    time.sleep(10)
+    st.rerun()
