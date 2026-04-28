@@ -58,9 +58,12 @@ def is_trading_day(check_date=None):
     
     return is_weekday and is_not_holiday
 
+# Add this after other timezone-related imports
+IST = pytz.timezone('Asia/Kolkata')
+
 def is_check_time():
-    """Check if current time is 14:30"""
-    now = datetime.now().time()
+    """Check if current time is 14:30 (India time)"""
+    now = datetime.now(IST).time()
     check_time = time(14, 30)
     # Allow 1 minute window (14:30 to 14:31)
     return check_time <= now < time(14, 31)
@@ -155,19 +158,21 @@ if "last_check" not in st.session_state:
     st.session_state.last_check = None
 
 # Only proceed if it's 14:30 and trading day
-current_time = datetime.now()
-if is_trading_day() and is_check_time():
-    if st.session_state.last_check != current_time.date():
-        st.session_state.last_check = current_time.date()
-        proceed_with_checks = True
-    else:
-        proceed_with_checks = False
-else:
-    proceed_with_checks = False
+current_time = datetime.now(IST)
+current_date = current_time.date()
 
-if not proceed_with_checks:
-    st.warning(f"⏰ Price checks happen at 14:30 on trading days only. Current time: {current_time.strftime('%H:%M')}")
-    st.stop()
+# Determine if we should send alerts (14:30 on trading day, only once per day)
+should_send_alerts = (
+    is_trading_day(current_date) and 
+    is_check_time() and 
+    st.session_state.last_check != current_date
+)
+
+if should_send_alerts:
+    st.session_state.last_check = current_date
+
+# Display current time info
+st.info(f"⏰ Current time: {current_time.strftime('%H:%M')} IST")
 
 # ---------------- UI ----------------
 st.title("📊 ETF Tracker")
@@ -217,9 +222,11 @@ for etf_id, meta in ETFS.items():
                 db[etf_id] = p
                 save_db(etf_id, p)
 
-                send_telegram(
-                    f"<b>📢 BUY ALERT</b>\n<b>{label}</b>\nInvest: ₹{invest}\nPrice: {round(curr,2)}"
-                )
+                # ✅ ONLY send Telegram at 14:30
+                if should_send_alerts:
+                    send_telegram(
+                        f"<b>📢 BUY ALERT</b>\n<b>{label}</b>\nInvest: ₹{invest}\nPrice: {round(curr,2)}"
+                    )
 
                 st.success(f"Bought {label}")
                 st.rerun()
