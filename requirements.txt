@@ -1,3 +1,9 @@
 streamlit
 yfinance
 pandas
+twilio
+holidays
+pywhatkit
+apscheduler
+python-dotenv
+requests
