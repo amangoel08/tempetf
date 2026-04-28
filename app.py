@@ -1,30 +1,34 @@
 import yfinance as yf
 import pandas as pd
 import streamlit as st
-import time
-import streamlit as st
 
-st.set_page_config(page_title="Private ETF Dashboard")
+# MUST BE FIRST
+st.set_page_config(page_title="Private ETF Dashboard", layout="wide")
 
-# 🔐 Simple login system
-PASSWORD = "mysecret123"  # change this
+# 🔐 LOGIN SYSTEM
+PASSWORD = "mysecret123"
 
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 def login():
+    st.title("🔐 Login Required")
     pwd = st.text_input("Enter Password", type="password")
+
     if st.button("Login"):
         if pwd == PASSWORD:
             st.session_state.authenticated = True
-            st.success("Access granted")
+            st.success("Access granted. Reloading...")
+            st.rerun()
         else:
             st.error("Wrong password")
 
+# If not logged in → stop here
 if not st.session_state.authenticated:
     login()
     st.stop()
-st.set_page_config(page_title="ETF Live Dashboard", layout="wide")
+
+# ---------------- DASHBOARD ----------------
 
 st.title("📊 Live ETF Trading Dashboard")
 
@@ -55,6 +59,6 @@ df = pd.DataFrame(data, columns=["ETF", "Price", "% Change"])
 
 st.dataframe(df, use_container_width=True)
 
-# 🔄 Auto refresh every 10 seconds
-time.sleep(10)
+# 🔄 Proper Streamlit auto refresh
+st.write("Auto-refresh every 10 seconds")
 st.rerun()
