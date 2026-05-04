@@ -74,7 +74,7 @@ ETFS = {
     "NIFTY50": {"label": "🇮🇳 NIFTY50 ETF", "symbol": "SETFNIF50.NS"},
     "SILVER": {"label": "🥈 SILVER", "symbol": "SILVERBEES.NS"},
     "MOMENTUM": {"label": "📈 MOMENTUM", "symbol": "MOM30IETF.NS"},
-    "GOLD": {"label": "🥇 GOLD", "symbol": "GOLDBEES.NS"},
+    "GOLD": {"label": "🥇 GOLD", "symbol": "MAGOLDETF.NS"},
     "NASDAQ100": {"label": "🇺🇸 NASDAQ100", "symbol": "MON100.NS"}
 }
 
